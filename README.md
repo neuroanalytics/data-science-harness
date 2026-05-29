@@ -33,10 +33,10 @@ The lifecycle is **a linear scientific pipeline (stages 0–8) running inside a 
 
 | Stage | What happens | Primary plugins |
 |-------|-------------|-----------------|
-| **0. Propose & Govern** | Funding metadata, Data Management Plan, IRB/ethics, pre-registration, project-ledger init | `project-governance` |
+| **0. Propose & Govern** | Funding metadata, Data Management Plan, IRB/ethics, *(optional)* pre-registration, project-ledger init | `project-governance` |
 | **1. Initialize** | YODA dataset + BIDS layout scaffolded at project creation | `project-management` |
-| **2. Curate** | Raw → BIDS conversion; annotate variables with Neurobagel / SNOMED | `data-standards`, `annotation` |
-| **3. Analyze** | Run computations via `datalad run` / `datalad container-run` | `provenance`, `data-analysis` |
+| **2. Curate** | Raw → BIDS conversion (optionally via Nipoppy); annotate variables with Neurobagel / SNOMED | `data-standards`, `annotation` |
+| **3. Analyze** | Run computations and preprocessing pipelines (Nipoppy) via `datalad run` / `datalad container-run` | `provenance`, `data-analysis` |
 | **4. Checkpoint** | `datalad save` with structured commit; auto-hook on session end | `provenance` |
 | **5. QC / Review** | BIDS validator; data quality checks; reproducibility audit | `data-standards`, `research-workflow` |
 | **6. Export** | Bundle outputs; push dataset version to OSF / Zenodo | `research-export` |
@@ -57,6 +57,22 @@ The lifecycle is **a linear scientific pipeline (stages 0–8) running inside a 
 ```
 
 The **Manage & Comply lane** is the key conceptual addition: administration is not a single stage, it is a continuous track the whole pipeline runs inside. It is served by the tracking skills in `project-management` and the compliance skills in `project-governance`, and it is backed by a single versioned [Project Ledger](#the-project-ledger-projectyaml).
+
+---
+
+## Analyses as Modular Products
+
+> Status: **proposed framing, open for participant feedback** before it is locked into the configuration.
+
+The stage diagram above is a *typical order*, not a rigid pipeline. Real papers are a series of small **comparisons** that tell a story, usually with supplementary figures, and rarely developed in a perfectly linear order unless strictly pre-registered. New questions arrive mid-project — a reviewer's challenge, a conflicting result, a follow-up worth checking.
+
+So rather than a fixed, up-front "analysis plan" stage, the harness treats **an analysis as a lightweight, addable unit — a comparison** — that can be introduced at *any* point and grouped into a **product** (a paper, a dataset release, a report). Supplemental verifications can be attached to a product at any time without touching top-level configuration.
+
+- **Keep it light.** Because provenance/dependency tracking can balloon quickly, the bar for adding a comparison is intentionally minimal: a short proposal (what's compared, why, expected inputs/outputs) recorded next to the analysis — *not* a heavyweight DAG the user must maintain by hand. Less is more.
+- **DataLad branches as the mental model.** A comparison or supplemental verification maps naturally onto a DataLad/git branch off the shared dataset: explore freely, keep what tells the story, and the provenance chain records how each branch was produced. A product collects the branches/results worth publishing.
+- **Reuse over time.** Because products are annotated and provenanced, a comparison from one project can be picked up, re-run, and extended later — flexibility for new explorations is preserved without re-architecting the project.
+
+The `experiment-design` proposal template is therefore an *optional, repeatable* artifact you attach to a comparison whenever you want one — not a gate the project must pass through. Strict pre-registration is one (rigorous) mode of this; the common, looser mode is to propose a comparison, log the decision, and add it to a product.
 
 ---
 
@@ -137,7 +153,7 @@ Nine plugins cover the full research lifecycle and its administrative track, fou
 - `compliance-audit` — check ledger obligations, de-identification, and DUA data-scope against the data actually present (reuses the audit pattern from `research-workflow/reproducibility`)
 - References (general core + neuro pack): `references/madmp-schema.md`, `references/hipaa-deid.md`, `references/clinicaltrials-fields.md`
 
-**`project-management`** — Scaffold a new research project **and** run the ongoing Manage & Comply lane. Scaffolding skills: `new-project` (YODA-structured DataLad dataset, BIDS layout, environment setup, CLAUDE.md, project ledger), `env-check`, `claude-config`. Tracking skills:
+**`project-management`** — Scaffold a new research project **and** run the ongoing Manage & Comply lane. Scaffolding skills: `new-project` (YODA-structured DataLad dataset, BIDS layout, environment setup with a basic scientific-Python container, a declared list of expected preprocessing pipelines — fMRIPrep, QSIPrep, … — wired into the Nipoppy / `datalad container-run` config, CLAUDE.md, project ledger), `env-check`, `claude-config`. Tracking skills:
 - `log-decision` — append to a decision / lab-notebook log, then `datalad save`
 - `track-milestone` — add/update milestones & deadlines in the ledger
 - `status-report` — generate a progress / funder-RPPR-style summary from the ledger + `datalad log` + git history
@@ -147,13 +163,18 @@ Nine plugins cover the full research lifecycle and its administrative track, fou
 
 **`data-standards`** — BIDS validation and naming throughout the lifecycle. Skills: `bids-validate`, `bids-scaffold`, `nipoppy-bidsify`. References: entity ordering, datatype conventions, sidecar field matrix.
 
+**Nipoppy as a primary tool.** If a project adopts [Nipoppy](https://nipoppy.readthedocs.io) as its dataset-management framework, it is more than a one-shot BIDS converter: it provides a standard CLI and a collection of config files (`global_config.json`, a manifest) that span **Initialize → Curate → Analyze → QC** — organizing the dataset, converting raw → BIDS, running preprocessing pipelines (fMRIPrep, QSIPrep, …) through containers, and tracking processing status. A project that declares its expected preprocessing pipelines at setup (see `project-management/new-project`) wires them into the Nipoppy config so each runs through `datalad container-run` with provenance intact. When Nipoppy is the primary tool, treat it as a cross-stage standard, not a single skill.
+
 **`annotation`** — Standardize and normalize phenotypic, clinical, and behavioral variables against controlled vocabularies and schemas. Skills: `neurobagel-annotate` (bagel-cli → `.jsonld` annotation files), `snomed-lookup` (SNOMED CT term suggestion + code lookup), `nidm-annotate` (Neuroimaging Data Model — PROV/RDF descriptions of experiments and results via NIDM-Experiment / NIDM-Results), `reproschema-annotate` (ReproSchema — standardize the tracking of behavioral assessment and questionnaire fields). External deps: `bagel-cli`, SNOMED CT API, `pynidm`, `reproschema`.
 
 **`provenance`** — DataLad as the default run path for all analysis. Skills: `datalad-run`, `datalad-container-run`, `datalad-save`, `checkpoint`. Includes auto-checkpoint hook that commits unsaved changes at end of each session. These skills auto-trigger on analysis commands (`python`, `Rscript`, `apptainer exec`, `bash run_*.sh`).
 
 **`data-analysis`** — Statistical analysis workflow: merge tabular data, generate data dictionaries, plan analyses, scaffold reports. Skills: `merge-data`, `gen-data-dict`, `plan-analysis`, `gen-report`. Agent: `merge-agent`. References: R/Python/Julia patterns, statistical decision tree, QC metrics.
 
-**`research-workflow`** — Academic process scaffolding. Skills: `literature-search` (PubMed/Semantic Scholar, BibTeX generation), `experiment-design` (power analysis, pre-registration template), `reproducibility` (audit analysis against DataLad log).
+**`research-workflow`** — Academic process scaffolding. Skills:
+- `literature-search` — *(scope deliberately open; pending participant feedback)* kept intentionally thin. Many researchers don't want AI-generated summaries or aggregations of papers, so this is a lightweight BibTeX-collection helper (PubMed / Semantic Scholar), **not** a synthesis engine. The clearer value is connecting to **meta-analytic tooling** — e.g. **NeuroSynth Compose / NiMARE** for reproducible, coordinate-based meta-analysis of a topic — flagged as a worthwhile integration point rather than a locked feature.
+- `experiment-design` — power analysis and effect-size estimation, plus an *optional, repeatable* analysis-proposal / pre-registration template (see [Analyses as Modular Products](#analyses-as-modular-products)).
+- `reproducibility` — audit an analysis against the DataLad log.
 
 **`research-export`** — Push finished research products. Skills: `osf-push` (osfclient → OSF node, DataLad sibling registration), `dataset-release` (version bump, BIDS CHANGES, git tag, optional Zenodo DOI), `export-results` (bundle `outputs/` with provenance summary). External deps: `osfclient`, `zenodraft`.
 
@@ -374,9 +395,11 @@ data-science-harness/
 |-----------------|-------------|--------|---------------------|
 | **DataLad** | Provenance backbone — records all analysis commands, inputs, outputs | `provenance` | `pip install datalad` |
 | **BIDS** | Brain Imaging Data Structure — canonical neuroimaging dataset format | `data-standards` | `npm install -g bids-validator` |
+| **Nipoppy** | Standardized dataset organization + pipeline running & tracking (CLI + config files); spans curate → analyze → QC | `data-standards`, `provenance` | `pip install nipoppy` |
 | **Neurobagel / bagel-cli** | Annotate phenotypic variables with controlled terms; push to graph | `annotation` | `pip install bagel-cli` |
 | **SNOMED CT** | Clinical terminology — normalize variable names to standard codes | `annotation` | SNOMED CT API key or local OWL |
 | **ReproSchema** | Standardized, versioned representation of behavioral assessments / questionnaires — standardizes the tracking of behavioral fields | `annotation` | `pip install reproschema` |
+| **NeuroSynth Compose / NiMARE** *(proposed)* | Reproducible coordinate-based meta-analysis of a topic — connection point pending community input | `research-workflow` | web platform; `pip install nimare` |
 | **OSF / osfclient** | Open Science Framework — push dataset versions, register DOI | `research-export` | `pip install osfclient` |
 | **Zenodo / zenodraft** | Zenodo deposit — mint DOI, archive dataset release | `research-export` | `pip install zenodraft` |
 
@@ -425,7 +448,7 @@ requires:
 Executable dependencies fall into three tiers:
 
 - **Core (always):** `git`, `git-annex`, `datalad` (+ Python/pip-uv for the CLI) — declared once in `harness.yaml`; the provenance + ledger substrate every project sits on.
-- **Cross-step (shared by ≥2 plugins):** container runtime (`provenance` + `dissemination`), `osfclient` (`research-export` + `project-governance`), `repo2data` (`provenance` + `dissemination`). Declared once and reused — the main source of inter-plugin coupling.
+- **Cross-step (shared by ≥2 plugins):** container runtime (`provenance` + `dissemination`), `nipoppy` (`data-standards` + `provenance`, spanning curate → analyze → track), `osfclient` (`research-export` + `project-governance`), `repo2data` (`provenance` + `dissemination`). Declared once and reused — the main source of inter-plugin coupling.
 - **Step-localized (one plugin):** e.g. `bids-validator` (`data-standards`), `bagel-cli` / `pynidm` / `reproschema` (`annotation`), `mystmd` / `jupyter-book` (`dissemination`).
 
 Dependencies span pip, npm/Node, and system packages, so `ds-harness` **detects and advises**: it verifies presence/version of every declared dependency, auto-installs only `python:` tools, and prints guidance for `system:` / `npm:` tools.
@@ -555,7 +578,7 @@ This project generalizes the Claude Code-specific plugins in [`my-skills`](../my
 | `project-init` | `plugins/project-management` | Data-analysis project type; adds tracking skills |
 | `bids` | `plugins/data-standards` | Full port including reference files |
 | `datalad-cli` | `plugins/provenance` | Core subset (run, container-run, save, checkpoint) |
-| `nipoppy-cli` | `plugins/data-standards` (BIDS skills) | BIDS conversion subset; full nipoppy in `my-skills` |
+| `nipoppy-cli` | `plugins/data-standards` (+ cross-stage tool) | BIDS-conversion skill is ported; adopted as the primary tool, Nipoppy spans curate → analyze → track (see `data-standards` notes). Full `nipoppy-cli` in `my-skills` |
 | — | `plugins/project-governance` | DMP, ethics, pre-registration, compliance |
 | — | `plugins/dissemination` | manuscript, reporting guidelines, living artifacts |
 
