@@ -113,23 +113,23 @@ harnesses: [all]
 
 ## Plugins
 
-Nine plugins cover the full research lifecycle and its administrative track. Four are ported from a mature Claude Code reference implementation; five are new.
+Nine plugins cover the full research lifecycle and its administrative track, four of them ported from a mature Claude Code reference implementation.
 
-| Plugin | Lifecycle stages | Source |
-|--------|-----------------|--------|
-| `project-governance` | 0 + Manage & Comply lane | **New** — DMP, ethics, pre-registration, compliance |
-| `project-management` | 1, 8 + Manage & Comply lane | Ported from `project-init`, **expanded** with tracking skills |
+| Plugin | Lifecycle stages | Notes |
+|--------|-----------------|-------|
+| `project-governance` | 0 + Manage & Comply lane | DMP, ethics, pre-registration, compliance |
+| `project-management` | 1, 8 + Manage & Comply lane | Ported from `project-init`; adds tracking skills |
 | `data-standards` | 2, 5, 7 — Curate, QC, Publish | Ported from `bids` + `nipoppy-cli` (BIDS skills) |
-| `annotation` | 2, 7 — Curate, Publish | **New** — Neurobagel + SNOMED CT |
+| `annotation` | 2, 7 — Curate, Publish | Neurobagel, SNOMED CT, NIDM, ReproSchema |
 | `provenance` | 3, 4 — Analyze, Checkpoint | Ported from `datalad-cli` (core subset) |
 | `data-analysis` | 3, 5 — Analyze, QC | Ported from `stat-analysis` |
-| `research-workflow` | 1–3 — lit search, experiment design, reproducibility | **New** |
-| `research-export` | 6, 7 — Export, Publish | **New** — OSF, Zenodo, dataset release |
-| `dissemination` | 8 — Disseminate & Report | **New** — manuscript, reporting guidelines, **living artifacts** |
+| `research-workflow` | 1–3 — lit search, experiment design, reproducibility | — |
+| `research-export` | 6, 7 — Export, Publish | OSF, Zenodo, dataset release |
+| `dissemination` | 8 — Disseminate & Report | manuscript, reporting guidelines, living artifacts |
 
 ### Plugin details
 
-**`project-governance`** *(NEW)* — Stand up and maintain the administrative + compliance backbone (lifecycle stage 0 and the Manage & Comply lane). Skills:
+**`project-governance`** — Stand up and maintain the administrative + compliance backbone (lifecycle stage 0 and the Manage & Comply lane). Skills:
 - `init-ledger` — scaffold `project.yaml` (called by / extends `project-management/new-project`)
 - `dmp` — author/update a Data Management Plan against the RDA DMP Common Standard (machine-actionable DMP) or a funder template; record obligations into the ledger
 - `ethics-track` — record IRB/IACUC protocol, approval, expiry, and amendments; flag upcoming renewals
@@ -137,7 +137,7 @@ Nine plugins cover the full research lifecycle and its administrative track. Fou
 - `compliance-audit` — check ledger obligations, de-identification, and DUA data-scope against the data actually present (reuses the audit pattern from `research-workflow/reproducibility`)
 - References (general core + neuro pack): `references/madmp-schema.md`, `references/hipaa-deid.md`, `references/clinicaltrials-fields.md`
 
-**`project-management`** *(expanded)* — Scaffold a new research project **and** run the ongoing Manage & Comply lane. Scaffolding skills: `new-project` (YODA-structured DataLad dataset, BIDS layout, environment setup, CLAUDE.md, project ledger), `env-check`, `claude-config`. Tracking skills (new):
+**`project-management`** — Scaffold a new research project **and** run the ongoing Manage & Comply lane. Scaffolding skills: `new-project` (YODA-structured DataLad dataset, BIDS layout, environment setup, CLAUDE.md, project ledger), `env-check`, `claude-config`. Tracking skills:
 - `log-decision` — append to a decision / lab-notebook log, then `datalad save`
 - `track-milestone` — add/update milestones & deadlines in the ledger
 - `status-report` — generate a progress / funder-RPPR-style summary from the ledger + `datalad log` + git history
@@ -147,7 +147,7 @@ Nine plugins cover the full research lifecycle and its administrative track. Fou
 
 **`data-standards`** — BIDS validation and naming throughout the lifecycle. Skills: `bids-validate`, `bids-scaffold`, `nipoppy-bidsify`. References: entity ordering, datatype conventions, sidecar field matrix.
 
-**`annotation`** — Normalize phenotypic and clinical variable names against controlled vocabularies. Skills: `neurobagel-annotate` (bagel-cli → `.jsonld` annotation files), `snomed-lookup` (SNOMED CT term suggestion + code lookup). External deps: `bagel-cli`, SNOMED CT API.
+**`annotation`** — Standardize and normalize phenotypic, clinical, and behavioral variables against controlled vocabularies and schemas. Skills: `neurobagel-annotate` (bagel-cli → `.jsonld` annotation files), `snomed-lookup` (SNOMED CT term suggestion + code lookup), `nidm-annotate` (Neuroimaging Data Model — PROV/RDF descriptions of experiments and results via NIDM-Experiment / NIDM-Results), `reproschema-annotate` (ReproSchema — standardize the tracking of behavioral assessment and questionnaire fields). External deps: `bagel-cli`, SNOMED CT API, `pynidm`, `reproschema`.
 
 **`provenance`** — DataLad as the default run path for all analysis. Skills: `datalad-run`, `datalad-container-run`, `datalad-save`, `checkpoint`. Includes auto-checkpoint hook that commits unsaved changes at end of each session. These skills auto-trigger on analysis commands (`python`, `Rscript`, `apptainer exec`, `bash run_*.sh`).
 
@@ -157,7 +157,7 @@ Nine plugins cover the full research lifecycle and its administrative track. Fou
 
 **`research-export`** — Push finished research products. Skills: `osf-push` (osfclient → OSF node, DataLad sibling registration), `dataset-release` (version bump, BIDS CHANGES, git tag, optional Zenodo DOI), `export-results` (bundle `outputs/` with provenance summary). External deps: `osfclient`, `zenodraft`.
 
-**`dissemination`** *(NEW)* — Turn the finished, provenanced work into publications — both classic outputs and the living compendium (lifecycle stage 8).
+**`dissemination`** — Turn the finished, provenanced work into publications — both classic outputs and the living compendium (lifecycle stage 8).
 
 *Classic publication outputs:*
 - `draft-manuscript` — scaffold an IMRaD manuscript; auto-fill Methods / Data-availability / provenance sections from `datalad log` + the ledger (reuses the provenance summary from `research-export/export-results`)
@@ -276,7 +276,7 @@ data-science-harness/
 │   └── agent-bundle/                 # plugin.yaml + SKILL.md + MCP-config skeleton
 │
 ├── plugins/
-│   ├── project-governance/           # Stage 0 + compliance lane (NEW)
+│   ├── project-governance/           # Stage 0 + compliance lane
 │   │   ├── plugin.yaml
 │   │   ├── skills/
 │   │   │   ├── init-ledger/SKILL.md
@@ -286,7 +286,7 @@ data-science-harness/
 │   │   │   └── compliance-audit/SKILL.md
 │   │   └── references/               # madmp-schema, hipaa-deid, clinicaltrials-fields
 │   │
-│   ├── project-management/           # Stage 1, 8 + Manage & Comply lane (expanded)
+│   ├── project-management/           # Stage 1, 8 + Manage & Comply lane
 │   │   ├── plugin.yaml
 │   │   ├── skills/
 │   │   │   ├── new-project/SKILL.md
@@ -305,10 +305,10 @@ data-science-harness/
 │   │   ├── skills/{bids-validate,bids-scaffold,nipoppy-bidsify}/SKILL.md
 │   │   └── references/               # entities, datatypes, sidecars
 │   │
-│   ├── annotation/                   # Stages 2, 7: Variable normalization (NEW)
+│   ├── annotation/                   # Stages 2, 7: Variable & assessment standardization
 │   │   ├── plugin.yaml
-│   │   ├── skills/{neurobagel-annotate,snomed-lookup}/SKILL.md
-│   │   └── references/               # neurobagel-schema, snomed-hierarchy
+│   │   ├── skills/{neurobagel-annotate,snomed-lookup,nidm-annotate,reproschema-annotate}/SKILL.md
+│   │   └── references/               # neurobagel-schema, snomed-hierarchy, nidm-schema, reproschema
 │   │
 │   ├── provenance/                   # Stages 3, 4: DataLad provenance
 │   │   ├── plugin.yaml
@@ -322,16 +322,16 @@ data-science-harness/
 │   │   ├── agents/merge-agent/SKILL.md
 │   │   └── references/               # r-patterns, python-patterns, qc-metrics
 │   │
-│   ├── research-workflow/            # Stages 1–3: Academic process (NEW)
+│   ├── research-workflow/            # Stages 1–3: Academic process
 │   │   ├── plugin.yaml
 │   │   └── skills/{literature-search,experiment-design,reproducibility}/SKILL.md
 │   │
-│   ├── research-export/              # Stages 6–7: Research product publishing (NEW)
+│   ├── research-export/              # Stages 6–7: Research product publishing
 │   │   ├── plugin.yaml
 │   │   ├── skills/{osf-push,dataset-release,export-results}/SKILL.md
 │   │   └── references/               # osf-workflow, zenodo-workflow, dataset-versioning
 │   │
-│   └── dissemination/                # Stage 8: Publications + living artifacts (NEW)
+│   └── dissemination/                # Stage 8: Publications + living artifacts
 │       ├── plugin.yaml
 │       ├── skills/
 │       │   ├── draft-manuscript/SKILL.md
@@ -376,6 +376,7 @@ data-science-harness/
 | **BIDS** | Brain Imaging Data Structure — canonical neuroimaging dataset format | `data-standards` | `npm install -g bids-validator` |
 | **Neurobagel / bagel-cli** | Annotate phenotypic variables with controlled terms; push to graph | `annotation` | `pip install bagel-cli` |
 | **SNOMED CT** | Clinical terminology — normalize variable names to standard codes | `annotation` | SNOMED CT API key or local OWL |
+| **ReproSchema** | Standardized, versioned representation of behavioral assessments / questionnaires — standardizes the tracking of behavioral fields | `annotation` | `pip install reproschema` |
 | **OSF / osfclient** | Open Science Framework — push dataset versions, register DOI | `research-export` | `pip install osfclient` |
 | **Zenodo / zenodraft** | Zenodo deposit — mint DOI, archive dataset release | `research-export` | `pip install zenodraft` |
 
@@ -391,6 +392,7 @@ data-science-harness/
 | **Crossref Funder Registry / NIH RePORTER** | Funder & grant identifiers, reporting deadlines | `project-governance` | ledger `funding[]` |
 | **EQUATOR (CONSORT/STROBE/PRISMA/ARRIVE)** | Reporting guidelines / checklists | `dissemination` | `reporting-checklist` |
 | **COBIDAS** *(neuro pack)* | Neuroimaging reporting standards | `dissemination` | optional neuro reference pack |
+| **NIDM (Neuroimaging Data Model)** *(neuro pack)* | Machine-readable neuroimaging annotation & provenance (NIDM-Experiment / NIDM-Results) | `annotation` | `pip install pynidm` |
 | **DataCite Metadata Schema** | DOI cross-linking via `RelatedIdentifier` | `dissemination`, `research-export` | `link-outputs` |
 
 ### Living research products
@@ -515,12 +517,12 @@ This project generalizes the Claude Code-specific plugins in [`my-skills`](../my
 | `my-skills` plugin | `data-science-harness` plugin | Notes |
 |--------------------|-------------------------------|-------|
 | `stat-analysis` | `plugins/data-analysis` | Add universal frontmatter |
-| `project-init` | `plugins/project-management` | Data-analysis project type; expanded with tracking skills |
+| `project-init` | `plugins/project-management` | Data-analysis project type; adds tracking skills |
 | `bids` | `plugins/data-standards` | Full port including reference files |
 | `datalad-cli` | `plugins/provenance` | Core subset (run, container-run, save, checkpoint) |
 | `nipoppy-cli` | `plugins/data-standards` (BIDS skills) | BIDS conversion subset; full nipoppy in `my-skills` |
-| — | `plugins/project-governance` | New: DMP, ethics, pre-registration, compliance |
-| — | `plugins/dissemination` | New: manuscript, reporting guidelines, living artifacts |
+| — | `plugins/project-governance` | DMP, ethics, pre-registration, compliance |
+| — | `plugins/dissemination` | manuscript, reporting guidelines, living artifacts |
 
 ---
 
@@ -528,13 +530,13 @@ This project generalizes the Claude Code-specific plugins in [`my-skills`](../my
 
 **Phase 1** — Scaffold + port: `harness.yaml`, `pyproject.toml`, and the four ported plugins (`data-analysis`, `provenance`, `data-standards`, `project-management` scaffolding skills) with universal frontmatter.
 
-**Phase 2** — New science plugins: `annotation` (Neurobagel, SNOMED), `research-export` (OSF, Zenodo, dataset release), `research-workflow` (lit search, experiment design, reproducibility).
+**Phase 2** — Science & workflow plugins: `annotation` (Neurobagel, SNOMED, NIDM, ReproSchema), `research-export` (OSF, Zenodo, dataset release), `research-workflow` (lit search, experiment design, reproducibility).
 
-**Phase 2.5** — Administrative & dissemination layer: the `project.yaml` ledger + `schemas/project.schema.json`; `project-governance` (DMP, ethics, pre-registration, compliance-audit); `project-management` tracking skills + the `obligations-due` hook; `dissemination` (manuscript, reporting-checklist, link-outputs, plus the `executable-article` and `agent-bundle` living artifacts). The living-artifact skills depend on `provenance` and `research-export` existing first.
+**Phase 3** — Administrative & dissemination layer: the `project.yaml` ledger + `schemas/project.schema.json`; `project-governance` (DMP, ethics, pre-registration, compliance-audit); `project-management` tracking skills + the `obligations-due` hook; `dissemination` (manuscript, reporting-checklist, link-outputs, plus the `executable-article` and `agent-bundle` living artifacts). The living-artifact skills depend on `provenance` and `research-export` existing first.
 
-**Phase 3** — Python CLI: `ds-harness` with Claude Code and Cursor adapters first; ledger validation (`ds-harness validate`).
+**Phase 4** — Python CLI: `ds-harness` with Claude Code and Cursor adapters first; ledger validation (`ds-harness validate`).
 
-**Phase 4** — Remaining adapters (Copilot, Windsurf, OpenCode, Gemini CLI), PyPI publish, community contribution guidelines.
+**Phase 5** — Remaining adapters (Copilot, Windsurf, OpenCode, Gemini CLI), PyPI publish, community contribution guidelines.
 
 ---
 
